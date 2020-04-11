@@ -1,11 +1,12 @@
 from django.http import JsonResponse
 from django.utils.datastructures import MultiValueDictKeyError
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from users.serializers import UserSerializer
 from .models import Group, PendingMembers
 from rest_framework import viewsets, status
 from .serializers import GroupSerializer, PendingMemberSerializer
@@ -19,15 +20,7 @@ class GroupViewSet(viewsets.GenericViewSet):
     @action(methods=['GET'], detail=False, url_name='details', url_path=r'(?P<pk>\d+)')
     def group_details(self, request, **kwargs):
         group = get_object_or_404(Group, id=kwargs.get('pk'))
-        data = {
-            'id': group.id,
-            'name': group.name,
-            'members_count': group.members.count(),
-            'owner': {
-                'first_name': group.owner.first_name,
-                'last_name': group.owner.last_name
-            }
-        }
+        data = GroupSerializer(group).data
         return Response(data=data, status=status.HTTP_200_OK)
 
     @action(methods=['POST'], detail=False, url_name='create', url_path='create')
@@ -43,7 +36,7 @@ class GroupViewSet(viewsets.GenericViewSet):
         group = Group.objects.get(id=kwargs.get('pk'))
         self.check_object_permissions(request, group)
         group.delete()
-        return Response(data={'info': "Group has been successfully deleted"})
+        return Response(data={'message': "Group has been successfully deleted"})
 
     @action(methods=['PUT'], detail=False, url_name='update', url_path=r'(?P<pk>\d+)/update')
     def update_group(self, request, **kwargs):
@@ -61,11 +54,11 @@ class GroupViewSet(viewsets.GenericViewSet):
         self.check_object_permissions(request, group)
         try:
             PendingMembers.objects.get(user=request.user, group=group)
-            return Response(data={'info': 'You are already on waiting list!'},
+            return Response(data={'message': 'You are already on waiting list!'},
                             status=status.HTTP_406_NOT_ACCEPTABLE)
         except PendingMembers.DoesNotExist:
             PendingMembers.objects.create(group=group, user=request.user)
-            return Response(data={'info': 'You successfully signed in to waiting list! '},
+            return Response(data={'message': 'You successfully signed in to waiting list! '},
                             status=status.HTTP_200_OK)
 
     @action(methods=['POST'], detail=False, url_name='accept', url_path=r'(?P<pk>\d+)/accept')
@@ -79,7 +72,7 @@ class GroupViewSet(viewsets.GenericViewSet):
             PendingMembers, user=serializer.validated_data.get('user'), group=group)
         group.members.add(pending_to_accept.user)
         pending_to_accept.delete()
-        return Response(data={'info': 'Successfully accepted'}, status=status.HTTP_200_OK)
+        return Response(data={'message': 'Successfully accepted'}, status=status.HTTP_200_OK)
 
     @action(methods=['GET'], detail=False, url_name='my_groups', url_path='my_groups')
     def groups_list(self, request):
@@ -87,17 +80,7 @@ class GroupViewSet(viewsets.GenericViewSet):
             members=request.user) | Group.objects.filter(owner=request.user)
         if not groups.exists():
             return Response(status=status.HTTP_406_NOT_ACCEPTABLE, data={'message': 'You have no groups yet.'})
-        response_groups = []
-        for group in groups:
-            response_groups.append({
-                'id': group.id,
-                'name': group.name,
-                'members_count': group.members.count(),
-                'owner': {
-                    'first_name': group.owner.first_name,
-                    'last_name': group.owner.last_name
-                }
-            })
+        response_groups = GroupSerializer(groups, many=True).data
         paginator = PageNumberPagination()
         data = paginator.paginate_queryset(response_groups, request)
         return paginator.get_paginated_response(data=data)
@@ -115,17 +98,7 @@ class GroupViewSet(viewsets.GenericViewSet):
         paginator = PageNumberPagination()
         paginator.page_size = 10
         groups = Group.objects.filter(name__contains=phrase)
-        response_groups = []
-        for group in groups:
-            response_groups.append({
-                'id': group.id,
-                'name': group.name,
-                'members_count': group.members.count(),
-                'owner': {
-                    'first_name': group.owner.first_name,
-                    'last_name': group.owner.last_name
-                }
-            })
+        response_groups = GroupSerializer(groups, many=True).data
         data = paginator.paginate_queryset(response_groups, request)
         if len(data) == 0:
             return Response(status=status.HTTP_406_NOT_ACCEPTABLE, data={'message': 'No groups were found'})
@@ -136,7 +109,7 @@ class GroupViewSet(viewsets.GenericViewSet):
         group = get_object_or_404(
             Group, members=request.user, id=kwargs.get('pk'))
         group.members.remove(request.user)
-        return Response(data={'success': 'You successfully left this group.'}, status=status.HTTP_200_OK)
+        return Response(data={'message': 'You successfully left this group.'}, status=status.HTTP_200_OK)
 
     @action(methods=['POST'], detail=False, url_name='pending_list', url_path=r'(?P<pk>\d+)/pending')
     def pending_list(self, request, **kwargs):
@@ -149,29 +122,15 @@ class GroupViewSet(viewsets.GenericViewSet):
     def member_list(self, request, **kwargs):
         group = get_object_or_404(Group, id=kwargs.get('pk'))
         self.check_object_permissions(request, group)
-        members = []
-        for member in group.members.values():
-            members.append({
-                'id': member['id'],
-                'first_name': member['first_name'],
-                'last_name': member['last_name']
-            })
+        members = UserSerializer(group.members, many=True).data
         return JsonResponse(data=members, status=200, safe=False)
 
     @action(methods=['POST'], detail=False, url_name='foreign_details', url_path=r'(?P<pk>\d+)/foreign')
     def foreign_group_details(self, request, **kwargs):
         group = get_object_or_404(Group, id=kwargs.get('pk'))
         if request.user in group.members.all():
-            return Response(data={'refuse': 'You are a member yet'}, status=status.HTTP_406_NOT_ACCEPTABLE)
-        group_details = {
-            'name': group.name,
-            'members_count': group.members.count(),
-            'owner': {
-                'first_name': group.owner.first_name,
-                'last_name': group.owner.last_name
-            },
-            'info': 'Become a member to see posts in this group'
-        }
+            return Response(data={'message': 'You are a member yet'}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        group_details = GroupSerializer(group).data
         return Response(data=group_details, status=status.HTTP_200_OK)
 
     @action(methods=['GET'], detail=False, url_name='foreign_details', url_path=r'(?P<pk>\d+)/is_owner')

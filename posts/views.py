@@ -24,13 +24,13 @@ class PostViewSet(viewsets.GenericViewSet):
     # KAŻDY CZŁONEK GRUPY
     @action(methods=['post'], detail=False, url_name='create', url_path=r'create/(?P<group_id>\d+)')
     def create_post(self, request, **kwargs):
-        print(request.data)
         group = get_object_or_404(Group, id=kwargs.get('group_id'))
         self.check_object_permissions(request, group)
         serializer = PostSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(data=serializer.errors, status=status.HTTP_406_NOT_ACCEPTABLE)
         serializer.save(owner=request.user, group=group)
+        print(serializer.data)
         return Response(data=serializer.data, status=status.HTTP_201_CREATED)
 
     # WŁAŚCICIEL POSTA
@@ -39,7 +39,7 @@ class PostViewSet(viewsets.GenericViewSet):
         post = get_object_or_404(Post, id=kwargs.get('post_id'))
         self.check_object_permissions(request, post)
         post.delete()
-        return Response(data={'success': 'Pomyślnie usunięto'})
+        return Response(data={'message': 'Pomyślnie usunięto'})
 
     @action(methods=['put'], detail=False, url_name='edit', url_path=r'edit/(?P<post_id>\d+)')
     def edit_post(self, request, **kwargs):
@@ -58,25 +58,10 @@ class PostViewSet(viewsets.GenericViewSet):
         self.check_object_permissions(request, group)
         try:
             posts = Post.objects.filter(group=group).order_by('-date_posted')
-        except Post.DoesNotExist:
-            return Response(data={'failed': 'Posts in this group were not found'},
+        except Post.DoesNotExist():
+            return Response(data={'message': 'Posts in this group were not found'},
                             status=status.HTTP_406_NOT_ACCEPTABLE)
-        users_posts = []
-        for post in posts:
-            users_posts.append({
-                'id': post.id,
-                'content': post.content,
-                'date_posted': datetime.strftime(post.date_posted, "%Y-%m-%d %H:%M"),
-                'group': {
-                    'id': post.group.id,
-                    'name': post.group.name
-                },
-                'owner': {
-                    'id': post.owner.id,
-                    'first_name': post.owner.first_name,
-                    'last_name': post.owner.last_name
-                }
-            })
+        users_posts = PostSerializer(posts, many=True).data
         paginator = PageNumberPagination()
         data = paginator.paginate_queryset(users_posts, request)
         return paginator.get_paginated_response(data=data)
@@ -84,33 +69,18 @@ class PostViewSet(viewsets.GenericViewSet):
     # każdy user z wszystkich jego grup
     @action(methods=['post'], detail=False, url_name='my_posts', url_path='my_posts')
     def users_groups_posts_list(self, request):
-        users_groups = Group.objects.filter(members=request.user)
+        users_groups = Group.objects.filter(members=request.user) | Group.objects.filter(owner=request.user)
         if len(users_groups) == 0:
-            return Response(data={'failed': 'Your groups were not found'},
+            return Response(data={'message': 'Your groups were not found'},
                             status=status.HTTP_406_NOT_ACCEPTABLE)
-        users_posts = []
         groups_posts = QuerySet(Post)
         for group in users_groups:
             groups_posts = groups_posts | Post.objects.filter(group=group)
         groups_posts = sorted(groups_posts, key=attrgetter('date_posted'), reverse=True)
         if len(groups_posts) == 0:
-            return Response(data={'failed': 'Your posts were not found'},
+            return Response(data={'message': 'Your posts were not found'},
                             status=status.HTTP_406_NOT_ACCEPTABLE)
-        for post in groups_posts:
-            users_posts.append({
-                'id': post.id,
-                'content': post.content,
-                'date_posted': datetime.strftime(post.date_posted, "%Y-%m-%d %H:%M"),
-                'group': {
-                    'id': post.group.id,
-                    'name': post.group.name
-                },
-                'owner': {
-                    'id': post.owner.id,
-                    'first_name': post.owner.first_name,
-                    'last_name': post.owner.last_name
-                }
-            })
+        users_posts = PostSerializer(groups_posts, many=True).data
         paginator = PageNumberPagination()
         data = paginator.paginate_queryset(users_posts, request)
         return paginator.get_paginated_response(data=data)
@@ -120,13 +90,8 @@ class PostViewSet(viewsets.GenericViewSet):
         post = get_object_or_404(Post, id=kwargs.get('post_id'))
         self.check_object_permissions(request, post.group)
         response_data = {
-            'post': {
-                'id': post.id,
-                'content': post.content,
-                'date_posted': post.date_posted,
-                'owner': post.owner.id
-            },
-            'comments': list(Comment.objects.filter(post=post).values())
+            'post': PostSerializer(post).data,
+            'comments': CommentSerializer(Comment.objects.filter(post=post)).data
         }
         return JsonResponse(data=response_data, status=200, safe=False)
 
@@ -137,7 +102,7 @@ class PostViewSet(viewsets.GenericViewSet):
         comment = get_object_or_404(Comment, id=kwargs.get('comment_id'), post=post)
         self.check_object_permissions(request, comment)
         comment.delete()
-        return JsonResponse(data={'success': 'Pomyślnie usunięto komentarz'}, status=200, safe=False)
+        return JsonResponse(data={'message': 'Pomyślnie usunięto komentarz'}, status=200, safe=False)
 
     @action(methods=['put'], detail=False, url_name='comment_edit',
             url_path=r'post/(?P<post_id>\d+)/comment/(?P<comment_id>\d+)/edit')
