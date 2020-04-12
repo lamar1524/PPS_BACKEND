@@ -30,7 +30,6 @@ class PostViewSet(viewsets.GenericViewSet):
         if not serializer.is_valid():
             return Response(data=serializer.errors, status=status.HTTP_406_NOT_ACCEPTABLE)
         serializer.save(owner=request.user, group=group)
-        print(serializer.data)
         return Response(data=serializer.data, status=status.HTTP_201_CREATED)
 
     # WŁAŚCICIEL POSTA
