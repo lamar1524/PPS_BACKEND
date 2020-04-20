@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
+from rest_framework.parsers import FileUploadParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -20,6 +21,7 @@ from django.db.models.query import QuerySet
 class PostViewSet(viewsets.GenericViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
+    parser_class = (FileUploadParser,)
 
     # KAŻDY CZŁONEK GRUPY
     @action(methods=['post'], detail=False, url_name='create', url_path=r'create/(?P<group_id>\d+)')
@@ -93,6 +95,7 @@ class PostViewSet(viewsets.GenericViewSet):
             'comments': CommentSerializer(Comment.objects.filter(post=post)).data
         }
         return JsonResponse(data=response_data, status=200, safe=False)
+
 
     @action(methods=['delete'], detail=False, url_name='comment_delete',
             url_path=r'post/(?P<post_id>\d+)/comment/(?P<comment_id>\d+)/delete')
