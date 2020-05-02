@@ -76,7 +76,7 @@ class GroupViewSet(viewsets.GenericViewSet):
 
     @action(methods=['GET'], detail=False, url_name='my_groups', url_path='my_groups')
     def groups_list(self, request):
-        groups = Group.objects.filter(members=request.user)
+        groups = Group.objects.filter(members=request.user) | Group.objects.filter(owner=request.user)
         if not groups.exists():
             return Response(status=status.HTTP_406_NOT_ACCEPTABLE, data={'message': 'You have no groups yet.'})
         response_groups = GroupSerializer(groups, many=True).data
