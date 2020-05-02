@@ -76,8 +76,7 @@ class GroupViewSet(viewsets.GenericViewSet):
 
     @action(methods=['GET'], detail=False, url_name='my_groups', url_path='my_groups')
     def groups_list(self, request):
-        groups = Group.objects.filter(
-            members=request.user) | Group.objects.filter(owner=request.user)
+        groups = Group.objects.filter(members=request.user)
         if not groups.exists():
             return Response(status=status.HTTP_406_NOT_ACCEPTABLE, data={'message': 'You have no groups yet.'})
         response_groups = GroupSerializer(groups, many=True).data
@@ -95,6 +94,7 @@ class GroupViewSet(viewsets.GenericViewSet):
         if len(phrase) < 2:
             return Response(data={'message': 'You provided too short search phrase'},
                             status=status.HTTP_406_NOT_ACCEPTABLE)
+
         paginator = PageNumberPagination()
         paginator.page_size = 10
         groups = Group.objects.filter(name__contains=phrase)

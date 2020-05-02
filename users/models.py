@@ -9,7 +9,7 @@ from forum import settings
 
 class UserManager(BaseUserManager):
 
-    def create_user(self, first_name, last_name, email, image, is_staff=False, is_admin=False, is_active=True, password=None):
+    def create_user(self, first_name, last_name, email, image = None, is_staff=False, is_admin=False, is_active=True, password=None):
         if not email:
             raise ValueError("An email address is required")
         if not password:
@@ -20,7 +20,8 @@ class UserManager(BaseUserManager):
         user_obj.set_password(password)
         user_obj.first_name = first_name
         user_obj.last_name = last_name
-        user_obj.image = image
+        if image is not None:
+            user_obj.image = image
         user_obj.staff = is_staff
         user_obj.admin = is_admin
         user_obj.active = is_active
@@ -50,9 +51,10 @@ class User(AbstractBaseUser):
     admin = models.BooleanField(default=False)
     staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
-    image = models.ImageField(blank=True, max_length=None, upload_to=upload_location)
+    image = models.FileField(blank=True, default='default.png', max_length=None, upload_to=upload_location)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']
+
 
     def __str__(self):
         return self.email
