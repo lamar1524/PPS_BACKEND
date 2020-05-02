@@ -15,6 +15,8 @@ class GroupSerializer(serializers.ModelSerializer):
 
 
 class PendingMemberSerializer(serializers.ModelSerializer):
+    user = UserSerializer(many=False, read_only=True)
+
     class Meta:
         model = PendingMembers
         fields = ['user']

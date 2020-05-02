@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from itertools import chain
 
+from users.models import User
 from users.serializers import UserSerializer
 from .models import Group, PendingMembers
 from rest_framework import viewsets, status
@@ -62,18 +63,18 @@ class GroupViewSet(viewsets.GenericViewSet):
             return Response(data={'message': 'You successfully signed in to waiting list! '},
                             status=status.HTTP_200_OK)
 
-    @action(methods=['POST'], detail=False, url_name='accept', url_path=r'(?P<pk>\d+)/accept')
-    def accept_pending_user(self, request, **kwargs):
-        serializer = PendingMemberSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(data=serializer.errors, status=status.HTTP_406_NOT_ACCEPTABLE)
+    @action(methods=['POST', 'DELETE'], detail=False, url_name='manage', url_path=r'(?P<pk>\d+)/manage')
+    def manage_pending_user(self, request, **kwargs):
+        user = get_object_or_404(User, id=request.data['id'])
+        pending = get_object_or_404(PendingMembers, group__id=kwargs.get('pk'), user=user)
         group = get_object_or_404(Group, id=kwargs.get('pk'))
         self.check_object_permissions(request, group)
-        pending_to_accept = get_object_or_404(
-            PendingMembers, user=serializer.validated_data.get('user'), group=group)
-        group.members.add(pending_to_accept.user)
-        pending_to_accept.delete()
-        return Response(data={'message': 'Successfully accepted'}, status=status.HTTP_200_OK)
+        message = 'Successfully declined'
+        if request.method == 'POST':
+            group.members.add(pending.user)
+            message = 'Successfully accepted'
+        pending.delete()
+        return JsonResponse(data={'message': message}, status=200)
 
     @action(methods=['GET'], detail=False, url_name='my_groups', url_path='my_groups')
     def groups_list(self, request):
@@ -117,6 +118,8 @@ class GroupViewSet(viewsets.GenericViewSet):
         group = get_object_or_404(Group, id=kwargs.get('pk'))
         self.check_object_permissions(request, group)
         pendings = PendingMemberSerializer(PendingMembers.objects.filter(group=group), many=True).data
+        if len(pendings) == 0:
+            return Response(data={'message': 'Here is no pending member'}, status=status.HTTP_406_NOT_ACCEPTABLE)
         paginator = PageNumberPagination()
         data = paginator.paginate_queryset(pendings, request)
         return paginator.get_paginated_response(data=data)
