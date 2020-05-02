@@ -5,6 +5,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from itertools import chain
 
 from users.serializers import UserSerializer
 from .models import Group, PendingMembers
@@ -76,8 +77,8 @@ class GroupViewSet(viewsets.GenericViewSet):
 
     @action(methods=['GET'], detail=False, url_name='my_groups', url_path='my_groups')
     def groups_list(self, request):
-        groups = Group.objects.filter(members=request.user) | Group.objects.filter(owner=request.user)
-        if not groups.exists():
+        groups = list(chain([*Group.objects.filter(members=request.user), *Group.objects.filter(owner=request.user)]))
+        if len(groups) == 0:
             return Response(status=status.HTTP_406_NOT_ACCEPTABLE, data={'message': 'You have no groups yet.'})
         response_groups = GroupSerializer(groups, many=True).data
         paginator = PageNumberPagination()
