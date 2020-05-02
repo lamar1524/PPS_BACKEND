@@ -116,8 +116,10 @@ class GroupViewSet(viewsets.GenericViewSet):
     def pending_list(self, request, **kwargs):
         group = get_object_or_404(Group, id=kwargs.get('pk'))
         self.check_object_permissions(request, group)
-        pendings = PendingMembers.objects.filter(group=group)
-        return JsonResponse(data=list(pendings.values()), status=200, safe=False)
+        pendings = PendingMemberSerializer(PendingMembers.objects.filter(group=group), many=True).data
+        paginator = PageNumberPagination()
+        data = paginator.paginate_queryset(pendings, request)
+        return paginator.get_paginated_response(data=data)
 
     @action(methods=['POST'], detail=False, url_name='member_list', url_path=r'(?P<pk>\d+)/members')
     def member_list(self, request, **kwargs):
