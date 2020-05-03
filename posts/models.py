@@ -20,5 +20,5 @@ class Comment(models.Model):
     content = models.CharField(max_length=511)
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     date_commented = models.DateTimeField(auto_now_add=True)
-    file = models.FileField(blank=True, max_length=None, upload_to=upload_location)
+    file = models.FileField(blank=True, null=True, max_length=None, upload_to=upload_location)
 

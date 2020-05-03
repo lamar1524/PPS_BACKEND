@@ -24,7 +24,7 @@ class PostSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    owner = UserSerializer(many=False, read_only=False)
+    owner = UserSerializer(many=False, read_only=True)
 
     class Meta:
         model = Comment

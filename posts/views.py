@@ -92,7 +92,7 @@ class PostViewSet(viewsets.GenericViewSet):
         self.check_object_permissions(request, post.group)
         response_data = {
             'post': PostSerializer(post).data,
-            'comments': CommentSerializer(Comment.objects.filter(post=post)).data
+            'comments': CommentSerializer(Comment.objects.filter(post=post), many=True).data
         }
         return JsonResponse(data=response_data, status=200, safe=False)
 
@@ -120,10 +120,11 @@ class PostViewSet(viewsets.GenericViewSet):
         return JsonResponse(data=serializer.data, status=200, safe=False)
 
     @action(methods=['post'], detail=False, url_name='comment_add',
-            url_path=r'post/(?P<post_id>\d+)/comment/')
+            url_path=r'post/(?P<post_id>\d+)/comment')
     def comment_add(self, request, **kwargs):
         serializer = CommentSerializer(data=request.data)
         if not serializer.is_valid():
+            print(serializer.errors)
             return Response(data=serializer.errors,
                             status=status.HTTP_406_NOT_ACCEPTABLE)
         post = get_object_or_404(Post, id=kwargs.get('post_id'))
