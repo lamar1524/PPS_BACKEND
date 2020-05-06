@@ -26,6 +26,7 @@ class PostViewSet(viewsets.GenericViewSet):
     # KAŻDY CZŁONEK GRUPY
     @action(methods=['post'], detail=False, url_name='create', url_path=r'create/(?P<group_id>\d+)')
     def create_post(self, request, **kwargs):
+        print(request.data)
         group = get_object_or_404(Group, id=kwargs.get('group_id'))
         self.check_object_permissions(request, group)
         serializer = PostSerializer(data=request.data)

@@ -9,10 +9,11 @@ def upload_location(instance, filename):
 
 class Post(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
-    content = models.CharField(max_length=1027)
+    content = models.TextField(max_length=5555)
     date_posted = models.DateTimeField(auto_now_add=True)
     group = models.ForeignKey(Group, on_delete=models.CASCADE)
     file = models.FileField(blank=True, max_length=None, upload_to=upload_location)
+    image = models.ImageField(blank=True, max_length=None, upload_to=upload_location)
 
 
 class Comment(models.Model):
