@@ -1,12 +1,12 @@
 from rest_framework import serializers
 
 from chatApp.models import Message
-from users.models import User
+from users.serializers import UserSerializer
 
 
 class MessageSerializer(serializers.ModelSerializer):
-    sender = serializers.SlugRelatedField(many=False, slug_field='first_name', queryset=User.objects.all())
-    receiver = serializers.SlugRelatedField(many=False, slug_field='first_name', queryset=User.objects.all())
+    sender = UserSerializer(many=False, read_only=True)
+    receiver = UserSerializer(many=False, read_only=True)
 
     class Meta:
         model = Message

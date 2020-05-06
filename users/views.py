@@ -34,7 +34,13 @@ class UserViewSet(viewsets.GenericViewSet):
         serializer.update(instance=request.user, validated_data=serializer.validated_data)
         return Response(data=serializer.data, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['get'], url_name='get')
+    @action(detail=False, methods=['get'], url_name='user_details', url_path='user_details/(?P<user_id>\d+)')
+    def foreign_user_details(self, request, **kwargs):
+        user = User.objects.get(id = kwargs.get('user_id'))
+        serializer = UserSerializer(user)
+        return Response(data=serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_name='user')
     def user_details(self, request):
         serializer = UserSerializer(request.user)
         return Response(data=serializer.data, status=status.HTTP_200_OK)

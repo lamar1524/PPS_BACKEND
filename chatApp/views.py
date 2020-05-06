@@ -22,12 +22,12 @@ class ChatViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_name='send_message', url_path='message')
     def send_message(self, request):
-        data = JSONParser().parse(request)
-        print(data)
-        serializer = MessageSerializer(data=data)
+        serializer = MessageSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(receiver=User.objects.get(id=request.data['receiver']), sender=User.objects.get(id=request.data['sender']))
             return JsonResponse(serializer.data, status=201)
+        else:
+            print(serializer.errors)
         return JsonResponse(serializer.errors, status=400)
 
     @action(detail=False, methods=['get'], url_name='chat', url_path='chat/(?P<receiver_id>\d+)')
@@ -36,8 +36,8 @@ class ChatViewSet(viewsets.ModelViewSet):
         sender = UserSerializer(sender_data).data
         receivers_data = User.objects.get(id=kwargs.get('receiver_id'))
         receiver = UserSerializer(receivers_data).data
-        messages = Message.objects.filter(sender=sender_data, receiver=receivers_data) | Message.objects.filter(
-            sender=receivers_data, receiver=sender_data)
+        messages = (Message.objects.filter(sender=sender_data, receiver=receivers_data) | Message.objects.filter(
+            sender=receivers_data, receiver=sender_data)).order_by('timestamp')
         messages_data = MessageSerializer(messages, many=True).data
         data = {
             'sender': sender,
