@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'users',
     'groups',
-    'posts'
+    'posts',
+    'chatApp'
 ]
 
 AUTH_USER_MODEL = 'users.User'
