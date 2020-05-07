@@ -49,6 +49,7 @@ class PostViewSet(viewsets.GenericViewSet):
         self.check_object_permissions(request, post)
         serializer = PostSerializer(post, request.data, partial=True)
         if not serializer.is_valid():
+            print(serializer.errors)
             return Response(data=serializer.errors, status=status.HTTP_406_NOT_ACCEPTABLE)
         serializer.update(post, serializer.validated_data)
         return Response(data=serializer.data, status=status.HTTP_200_OK)
