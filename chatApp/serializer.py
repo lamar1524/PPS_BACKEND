@@ -5,9 +5,15 @@ from users.serializers import UserSerializer
 
 
 class MessageSerializer(serializers.ModelSerializer):
-    sender = UserSerializer(many=False, read_only=True)
-    receiver = UserSerializer(many=False, read_only=True)
+    sender = serializers.SerializerMethodField('get_sender')
+    receiver = serializers.SerializerMethodField('get_receiver')
 
     class Meta:
         model = Message
         fields = ['sender', 'receiver', 'message', 'timestamp']
+
+    def get_sender(self, instance):
+        return UserSerializer(instance.sender, context=self.context).data
+
+    def get_receiver(self, instance):
+        return UserSerializer(instance.receiver, context=self.context).data
