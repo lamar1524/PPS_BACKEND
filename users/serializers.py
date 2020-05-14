@@ -8,6 +8,12 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'first_name', 'last_name', 'password', 'image']
         extra_kwargs = {'password': {'write_only': True}}
 
+    def to_representation(self, instance):
+        to_return = super().to_representation(instance)
+        if to_return['image']:
+            to_return['image'] = 'http://' + self.context['host'] + to_return['image']
+        return to_return
+
     def create(self, validates_data):
         return User.objects.create_user(**validates_data)
 

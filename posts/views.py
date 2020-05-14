@@ -29,7 +29,7 @@ class PostViewSet(viewsets.GenericViewSet):
         print(request.data)
         group = get_object_or_404(Group, id=kwargs.get('group_id'))
         self.check_object_permissions(request, group)
-        serializer = PostSerializer(data=request.data)
+        serializer = PostSerializer(context={"host": request.get_host()}, data=request.data)
         if not serializer.is_valid():
             return Response(data=serializer.errors, status=status.HTTP_406_NOT_ACCEPTABLE)
         serializer.save(owner=request.user, group=group)
@@ -47,7 +47,7 @@ class PostViewSet(viewsets.GenericViewSet):
     def edit_post(self, request, **kwargs):
         post = Post.objects.get(id=kwargs.get('post_id'))
         self.check_object_permissions(request, post)
-        serializer = PostSerializer(post, request.data, partial=True)
+        serializer = PostSerializer(post, request.data, context={"host": request.get_host()}, partial=True)
         if not serializer.is_valid():
             print(serializer.errors)
             return Response(data=serializer.errors, status=status.HTTP_406_NOT_ACCEPTABLE)
@@ -64,7 +64,7 @@ class PostViewSet(viewsets.GenericViewSet):
         except Post.DoesNotExist():
             return Response(data={'message': 'Posts in this group were not found'},
                             status=status.HTTP_406_NOT_ACCEPTABLE)
-        users_posts = PostSerializer(posts, many=True).data
+        users_posts = PostSerializer(posts, many=True, context={'host': request.get_host()}).data
         paginator = PageNumberPagination()
         data = paginator.paginate_queryset(users_posts, request)
         return paginator.get_paginated_response(data=data)
@@ -83,7 +83,7 @@ class PostViewSet(viewsets.GenericViewSet):
         if len(groups_posts) == 0:
             return Response(data={'message': 'Your posts were not found'},
                             status=status.HTTP_406_NOT_ACCEPTABLE)
-        users_posts = PostSerializer(groups_posts, many=True).data
+        users_posts = PostSerializer(groups_posts, context={"host": request.get_host()}, many=True).data
         paginator = PageNumberPagination()
         data = paginator.paginate_queryset(users_posts, request)
         return paginator.get_paginated_response(data=data)
@@ -93,11 +93,11 @@ class PostViewSet(viewsets.GenericViewSet):
         post = get_object_or_404(Post, id=kwargs.get('post_id'))
         self.check_object_permissions(request, post.group)
         response_data = {
-            'post': PostSerializer(post).data,
-            'comments': CommentSerializer(Comment.objects.filter(post=post), many=True).data
+            'post': PostSerializer(post, context={"host": request.get_host()}).data,
+            'comments': CommentSerializer(Comment.objects.filter(post=post), context={"host": request.get_host()},
+                                          many=True).data
         }
         return JsonResponse(data=response_data, status=200, safe=False)
-
 
     @action(methods=['delete'], detail=False, url_name='comment_delete',
             url_path=r'post/(?P<post_id>\d+)/comment/(?P<comment_id>\d+)/delete')
@@ -111,7 +111,7 @@ class PostViewSet(viewsets.GenericViewSet):
     @action(methods=['put'], detail=False, url_name='comment_edit',
             url_path=r'post/(?P<post_id>\d+)/comment/(?P<comment_id>\d+)/edit')
     def comment_edit(self, request, **kwargs):
-        serializer = CommentSerializer(data=request.data)
+        serializer = CommentSerializer(context={"host": request.get_host()}, data=request.data)
         if not serializer.is_valid():
             return Response(data=serializer.errors,
                             status=status.HTTP_406_NOT_ACCEPTABLE)
@@ -124,9 +124,8 @@ class PostViewSet(viewsets.GenericViewSet):
     @action(methods=['post'], detail=False, url_name='comment_add',
             url_path=r'post/(?P<post_id>\d+)/comment')
     def comment_add(self, request, **kwargs):
-        serializer = CommentSerializer(data=request.data)
+        serializer = CommentSerializer(context={"host": request.get_host()}, data=request.data)
         if not serializer.is_valid():
-            print(serializer.errors)
             return Response(data=serializer.errors,
                             status=status.HTTP_406_NOT_ACCEPTABLE)
         post = get_object_or_404(Post, id=kwargs.get('post_id'))

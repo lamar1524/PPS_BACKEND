@@ -20,7 +20,7 @@ class UserViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['post'], url_name='register')
     def register(self, request):
-        serializer = UserSerializer(data=request.data)
+        serializer = UserSerializer(context={'host': request.get_host()}, data=request.data)
         if not serializer.is_valid():
             return Response(data=serializer.errors, status=status.HTTP_406_NOT_ACCEPTABLE)
         serializer.save()
@@ -28,7 +28,7 @@ class UserViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['put'], url_name='update')
     def update_profile(self, request):
-        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        serializer = UserSerializer(request.user, context={'host': request.get_host()}, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(data=serializer.errors, status=status.HTTP_406_NOT_ACCEPTABLE)
         serializer.update(instance=request.user, validated_data=serializer.validated_data)
@@ -36,11 +36,11 @@ class UserViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['get'], url_name='user_details', url_path='user_details/(?P<user_id>\d+)')
     def foreign_user_details(self, request, **kwargs):
-        user = User.objects.get(id = kwargs.get('user_id'))
-        serializer = UserSerializer(user)
+        user = User.objects.get(id=kwargs.get('user_id'))
+        serializer = UserSerializer(user, context={'host': request.get_host()})
         return Response(data=serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['get'], url_name='user')
     def user_details(self, request):
-        serializer = UserSerializer(request.user)
+        serializer = UserSerializer(request.user, context={'host': request.get_host()})
         return Response(data=serializer.data, status=status.HTTP_200_OK)

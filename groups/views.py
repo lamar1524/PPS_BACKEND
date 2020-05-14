@@ -22,12 +22,12 @@ class GroupViewSet(viewsets.GenericViewSet):
     @action(methods=['GET'], detail=False, url_name='details', url_path=r'(?P<pk>\d+)')
     def group_details(self, request, **kwargs):
         group = get_object_or_404(Group, id=kwargs.get('pk'))
-        data = GroupSerializer(group).data
+        data = GroupSerializer(group, context={'host': request.get_host()}).data
         return Response(data=data, status=status.HTTP_200_OK)
 
     @action(methods=['POST'], detail=False, url_name='create', url_path='create')
     def create_group(self, request, *args, **kwargs):
-        serializer = GroupSerializer(data=request.data)
+        serializer = GroupSerializer(data=request.data, context={'host': request.get_host()})
         if not serializer.is_valid():
             return Response(data=serializer.errors, status=status.HTTP_406_NOT_ACCEPTABLE)
         serializer.save(owner=request.user)
@@ -44,7 +44,7 @@ class GroupViewSet(viewsets.GenericViewSet):
     def update_group(self, request, **kwargs):
         group = get_object_or_404(Group, id=kwargs.get('pk'))
         self.check_object_permissions(request, group)
-        serializer = GroupSerializer(group, request.data, partial=True)
+        serializer = GroupSerializer(group, request.data, partial=True, context={'host': request.get_host()})
         if not serializer.is_valid():
             return Response(data=serializer.errors, status=status.HTTP_406_NOT_ACCEPTABLE)
         serializer.update(group, serializer.validated_data)
@@ -81,7 +81,7 @@ class GroupViewSet(viewsets.GenericViewSet):
         groups = list(chain([*Group.objects.filter(members=request.user), *Group.objects.filter(owner=request.user)]))
         if len(groups) == 0:
             return Response(status=status.HTTP_406_NOT_ACCEPTABLE, data={'message': 'You have no groups yet.'})
-        response_groups = GroupSerializer(groups, many=True).data
+        response_groups = GroupSerializer(groups, context={'host': request.get_host()}, many=True).data
         paginator = PageNumberPagination()
         data = paginator.paginate_queryset(response_groups, request)
         return paginator.get_paginated_response(data=data)
@@ -100,7 +100,7 @@ class GroupViewSet(viewsets.GenericViewSet):
         paginator = PageNumberPagination()
         paginator.page_size = 10
         groups = Group.objects.filter(name__contains=phrase)
-        response_groups = GroupSerializer(groups, many=True).data
+        response_groups = GroupSerializer(groups, context={'host': request.get_host()}, many=True).data
         data = paginator.paginate_queryset(response_groups, request)
         if len(data) == 0:
             return Response(status=status.HTTP_406_NOT_ACCEPTABLE, data={'message': 'No groups were found'})
@@ -117,7 +117,8 @@ class GroupViewSet(viewsets.GenericViewSet):
     def pending_list(self, request, **kwargs):
         group = get_object_or_404(Group, id=kwargs.get('pk'))
         self.check_object_permissions(request, group)
-        pendings = PendingMemberSerializer(PendingMembers.objects.filter(group=group), many=True).data
+        pendings = PendingMemberSerializer(PendingMembers.objects.filter(group=group),
+                                           context={'host': request.get_host()}, many=True).data
         if len(pendings) == 0:
             return Response(data={'message': 'Here is no pending member'}, status=status.HTTP_406_NOT_ACCEPTABLE)
         paginator = PageNumberPagination()
@@ -136,7 +137,7 @@ class GroupViewSet(viewsets.GenericViewSet):
         group = get_object_or_404(Group, id=kwargs.get('pk'))
         if request.user in group.members.all():
             return Response(data={'message': 'You are a member yet'}, status=status.HTTP_406_NOT_ACCEPTABLE)
-        group_details = GroupSerializer(group).data
+        group_details = GroupSerializer(group, context={'host': request.get_host()}).data
         return Response(data=group_details, status=status.HTTP_200_OK)
 
     @action(methods=['GET'], detail=False, url_name='foreign_details', url_path=r'(?P<pk>\d+)/is_owner')
