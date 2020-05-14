@@ -76,7 +76,7 @@ class PostViewSet(viewsets.GenericViewSet):
         if len(users_groups) == 0:
             return Response(data={'message': 'Your groups were not found'},
                             status=status.HTTP_406_NOT_ACCEPTABLE)
-        groups_posts = QuerySet(Post)
+        groups_posts = Post.objects.none()
         for group in users_groups:
             groups_posts = groups_posts | Post.objects.filter(group=group)
         groups_posts = sorted(groups_posts, key=attrgetter('date_posted'), reverse=True)

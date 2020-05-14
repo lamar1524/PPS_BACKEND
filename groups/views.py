@@ -88,18 +88,20 @@ class GroupViewSet(viewsets.GenericViewSet):
 
     @action(methods=['POST'], detail=False, url_name='search', url_path='search')
     def search_for_group(self, request):
-        try:
-            phrase = request.data['phrase']
-        except MultiValueDictKeyError:
-            return Response(data={'message': 'You provided wrong request body key'},
-                            status=status.HTTP_406_NOT_ACCEPTABLE)
+
+        if request.data.get('phrase'):
+            phrase = request.data.get('phrase')
+            groups = Group.objects.filter(name__contains=phrase)
+        else:
+            phrase = '  '
+            groups = Group.objects.all()
+
         if len(phrase) < 2:
             return Response(data={'message': 'You provided too short search phrase'},
                             status=status.HTTP_406_NOT_ACCEPTABLE)
 
         paginator = PageNumberPagination()
         paginator.page_size = 10
-        groups = Group.objects.filter(name__contains=phrase)
         response_groups = GroupSerializer(groups, context={'host': request.get_host()}, many=True).data
         data = paginator.paginate_queryset(response_groups, request)
         if len(data) == 0:
