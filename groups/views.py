@@ -131,7 +131,7 @@ class GroupViewSet(viewsets.GenericViewSet):
     def member_list(self, request, **kwargs):
         group = get_object_or_404(Group, id=kwargs.get('pk'))
         self.check_object_permissions(request, group)
-        members = UserSerializer(group.members, many=True).data
+        members = UserSerializer(group.members, many=True, context={'host': request.get_host()}).data
         return JsonResponse(data=members, status=200, safe=False)
 
     @action(methods=['POST'], detail=False, url_name='foreign_details', url_path=r'(?P<pk>\d+)/foreign')
